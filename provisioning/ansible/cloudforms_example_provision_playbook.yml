@@ -1,0 +1,17 @@
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+  - debug:
+      msg: "Ansible is doing CloudForms things!"
+
+#
+# FAIL: Uncomment lines below (spacing sensitive)
+#  - fail:
+#      msg: "Oh no!  I made a mistake in my Ansible process which integrates with the CloudForms infrastructure! Something broke"
+#
+# FIX: Uncomment lines below (spacing sensitive)
+  - debug:
+      msg: "Awesome!  I fixed my mistake in my Ansible process which integrates with the CloudForms infrastructure!"
+
