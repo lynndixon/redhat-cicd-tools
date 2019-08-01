@@ -1,0 +1,6 @@
+debug: false
+
+tower_username:   ''
+tower_password:   ''
+tower_server:     ''
+tower_project_id: ''
