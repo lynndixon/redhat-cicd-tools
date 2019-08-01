@@ -1,0 +1,9 @@
+debug: false
+
+miq_username:        ''
+miq_password:        ''
+miq_server:          ''
+miq_automate_domain: ''
+
+miq_refresh_type: 'branch'   # tag also acceptable
+miq_refresh_id:   'master'   # branch name or tag to refresh

@@ -13,7 +13,7 @@
 - name: 'inspect init_response'
   debug:
     var: init_response
-  when: debug
+  when: (debug | bool)
 
 - name: 'wait for the update to complete'
   uri:
@@ -34,7 +34,7 @@
 - name: 'inspect update_response'
   debug:
     var: update_response
-  when: debug
+  when: (debug | bool)
 
 - fail:
     msg: 'the update failed'

@@ -5,7 +5,7 @@
   roles:
     #
     # pass in the action extra_var to call the appropriate role:
-    #   - update_tower_project: refreshes ansible tower project from scm
-    #   - update_miq_project:   refreshes manageiq/cloudforms automate domain from git
+    #   - update_tower_project:         refreshes ansible tower project from scm
+    #   - update_miq_automate_domain:   refreshes manageiq/cloudforms automate domain from git
     #
     - role: "{{ action }}"
