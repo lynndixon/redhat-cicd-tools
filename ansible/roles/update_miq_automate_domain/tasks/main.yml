@@ -1,0 +1,64 @@
+- name: 'get the status of the automate domain'
+  uri:
+    url:              'https://{{ miq_server }}/api/automate_domains/{{ miq_automate_domain }}'
+    user:             "{{ miq_username }}"
+    password:         "{{ miq_password }}"
+    method:           'GET'
+    force_basic_auth: true
+    status_code:      200,201
+    body_format:      'json'
+    validate_certs:   false
+  register: current_status
+
+- name: 'inspect current_status'
+  debug:
+    var: current_status
+  when: (debug | bool)
+
+- name: 'initialize the automate domain refresh'
+  uri:
+    url:              'https://{{ miq_server }}/api/automate_domains/{{ miq_automate_domain }}'
+    user:             "{{ miq_username }}"
+    password:         "{{ miq_password }}"
+    method:           'POST'
+    force_basic_auth: true
+    status_code:      200,201
+    body_format:      'json'
+    validate_certs:   false
+    body:
+      action: 'refresh_from_source'
+      resource:
+        ref_type: "{{ miq_refresh_type }}"
+        ref:      "{{ miq_refresh_id }}"
+  register: refresh_response
+
+- name: 'inspect refresh_response'
+  debug:
+    var: refresh_response
+  when: (debug | bool)
+
+- name: 'wait for the refresh to complete'
+  uri:
+    url:              'https://{{ miq_server }}/api/automate_domains/{{ miq_automate_domain }}'
+    user:             "{{ miq_username }}"
+    password:         "{{ miq_password }}"
+    method:           'GET'
+    force_basic_auth: true
+    status_code:      200,201
+    body_format:      'json'
+    validate_certs:   false
+  register: refresh_status
+  retries:  25
+  delay:    5
+  until:
+    - refresh_status.json.last_import_on > current_status.json.last_import_on
+
+- name: 'inspect refresh_status'
+  debug:
+    var: refresh_status
+  when: (debug | bool)
+
+- fail:
+    msg: 'the update failed'
+  when:
+    - refresh_status.json.last_import_on == current_status.json.last_import_on

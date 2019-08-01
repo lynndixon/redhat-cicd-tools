@@ -1,0 +1,43 @@
+- name: 'initialize ansible tower project update'
+  uri:
+    url:              'https://{{ tower_server }}/api/v2/projects/{{ tower_project_id }}/update/'
+    user:             "{{ tower_username }}"
+    password:         "{{ tower_password }}"
+    method:           'POST'
+    force_basic_auth: true
+    status_code:      202
+    body_format:      'json'
+    validate_certs:   false
+  register: init_response
+
+- name: 'inspect init_response'
+  debug:
+    var: init_response
+  when: (debug | bool)
+
+- name: 'wait for the update to complete'
+  uri:
+    url:              'https://{{ tower_server }}/api/v2/project_updates/{{ init_response.json.id }}/'
+    user:             "{{ tower_username }}"
+    password:         "{{ tower_password }}"
+    method:           'GET'
+    force_basic_auth: true
+    status_code:      200
+    body_format:      'json'
+    validate_certs:   false
+  register: update_response
+  retries:  15
+  delay:    15
+  until:
+    - update_response.json.status == 'successful'
+
+- name: 'inspect update_response'
+  debug:
+    var: update_response
+  when: (debug | bool)
+
+- fail:
+    msg: 'the update failed'
+  when:
+    - update_response.json.failed
+    - update_response.failed
