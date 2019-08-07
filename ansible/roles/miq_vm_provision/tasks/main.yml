@@ -1,0 +1,94 @@
+#
+# PROVISION VM
+#
+- block:
+    - name: 'initialize the vm provision'
+      uri:
+        url:              'https://{{ miq_server }}/api/provision_requests'
+        user:             "{{ miq_username }}"
+        password:         "{{ miq_password }}"
+        method:           'POST'
+        force_basic_auth: true
+        status_code:      200,201
+        body_format:      'json'
+        validate_certs:   false
+        body:
+          action: 'create'
+          resource:
+            version: "{{ miq_provision_request_version }}"
+            template_fields:
+              name: "{{ miq_template_name | default(omit) }}"
+              id:   "{{ miq_template_id   | default(omit) }}"
+              guid: "{{ miq_template_guid | default(omit) }}"
+            vm_fields:         "{{ miq_provision_options_json | default('{}') }}"
+            tags:              "{{ miq_provision_tags_json    | default('{}') }}"
+            additional_values: "{{ miq_ws_values_json         | default('{}') }}"
+            requester:
+              auto_approve:     true
+              owner_email:      "{{ miq_email }}"
+              owner_first_name: "{{ miq_username }}"
+              owner_last_name:  "{{ miq_username }}"
+              username:         "{{ miq_username }}"
+      register: init_response
+
+  always:
+    - name: 'inspect init_response'
+      debug:
+        var: init_response
+      when: (debug | bool)
+
+#
+# WAIT FOR PROVISION TO COMPLETE
+#
+- block:
+    - name: 'wait for the provision to complete'
+      uri:
+        url:              'https://{{ miq_server }}/api/provision_requests/{{ init_response.json.results[0].id }}'
+        user:             "{{ miq_username }}"
+        password:         "{{ miq_password }}"
+        method:           'GET'
+        force_basic_auth: true
+        status_code:      200,201
+        body_format:      'json'
+        validate_certs:   false
+      register: provision_status
+      retries:  240
+      delay:    30
+      until:
+        - (provision_status.json.request_state | lower) == 'finished'
+      failed_when:
+        - (provision_status.json.status        | lower) == 'error'
+
+    - fail:
+        msg: 'provision failed'
+      when:
+        - (provision_status.json.request_state | lower) != 'finished'
+        - (provision_status.json.status        | lower) != 'ok'
+
+  always:
+    - name: 'inspect provision_status'
+      debug:
+        var: provision_status
+      when: (debug | bool)
+
+#
+# GET MIQ REQUEST TASK
+#
+- block:
+    - name: 'get the request task'
+      uri:
+        url:              'https://{{ miq_server }}/api/provision_requests/{{ init_response.json.results[0].id }}/request_tasks?expand=resources'
+        user:             "{{ miq_username }}"
+        password:         "{{ miq_password }}"
+        method:           'GET'
+        force_basic_auth: true
+        status_code:      200,201
+        body_format:      'json'
+        validate_certs:   false
+      register: request_task_status
+
+  always:
+    - name: 'inspect request_task_status'
+      debug:
+        var: request_task_status
+      when: (debug | bool)

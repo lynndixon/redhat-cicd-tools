@@ -1,0 +1,67 @@
+#
+# INITIALIZE RETIREMENT
+#
+- block:
+    - name: 'initialize the vm retire'
+      uri:
+        url:              'https://{{ miq_server }}/api/vms/{{ miq_vm_id }}'
+        user:             "{{ miq_username }}"
+        password:         "{{ miq_password }}"
+        method:           'POST'
+        force_basic_auth: true
+        status_code:      200,201
+        body_format:      'json'
+        validate_certs:   false
+        body:
+          action: 'retire'
+      register: retire_response
+
+  always:
+    - name: 'inspect retire_response'
+      debug:
+        var: retire_response
+      when: (debug | bool)
+
+#
+# WAIT FOR RETIREMENT TO COMPLETE
+#
+# NOTE: we want to look for VMs which match the ID rather than go to the vms/ID endpoint because the retire check
+#       fails when the VM disappears (e.g. the retire process removes the VM from the VMDB)
+#
+- block:
+    - name: 'wait for the retirement to complete'
+      uri:
+        url:              'https://{{ miq_server }}/api/vms'
+        user:             "{{ miq_username }}"
+        password:         "{{ miq_password }}"
+        method:           'GET'
+        force_basic_auth: true
+        status_code:      200,201
+        body_format:      'json'
+        validate_certs:   false
+        body:
+          expand:     'resources'
+          attributes: 'id,name,retirement_state,retired,archived,orphaned'
+          filter:
+            - "id={{ miq_vm_id }}"
+      register: retire_status
+      retries:  240
+      delay:    30
+      until:
+        - ((retire_status.json.resources | length == 0)                             or
+          (retire_status.json.resources[0].retired | bool)                          or
+          ((retire_status.json.resources[0].retirement_state | lower) == 'retired') or
+          ((retire_status.json.resources[0].retirement_state | lower) == 'error'))
+
+    - fail:
+        msg: 'retirement failed'
+      when:
+        - (retire_status.json.resources | length) > 0
+        - retire_status.json.resources[0].retirement_state is defined
+        - (retire_status.json.resources[0].retirement_state | lower) == 'error'
+
+  always:
+    - name: 'inspect retire_status'
+      debug:
+        var: retire_status
+      when: (debug | bool)
