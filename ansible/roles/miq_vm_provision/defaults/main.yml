@@ -1,0 +1,12 @@
+debug: false
+
+miq_provision_request_version: '1.1'
+
+miq_username:
+miq_password:
+miq_server:
+miq_email: "{{ miq_username }}@no-reply.net"
+
+miq_provision_options_json:
+miq_provision_tags_json:
+miq_ws_values_json:

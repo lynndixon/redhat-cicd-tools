@@ -1,0 +1,43 @@
+- hosts:        'localhost'
+  gather_facts: false
+  connection:   local
+
+  roles:
+    #
+    # pass in the appropriate tag:
+    #   - cloudforms: tests the cloudforms vm provision lifecycle
+    #   - satellite:  tests the satellite vm provision lifecycle
+    #   - tower:      tests the tower vm provision lifecycle
+    #
+
+    #
+    # CLOUDFORMS LIFECYCLE TEST
+    #
+    - role: 'miq_vm_provision'
+      tags:
+        - cloudforms
+    - role: 'miq_vm_retire'
+      vars:
+        miq_vm_id: "{{ request_task_status.json.resources[0].destination_id | default(None) }}"
+      tags:
+        - cloudforms
+
+    #
+    # SATELLITE LIFECYCLE TEST
+    #
+    #- role: 'satellite_vm_provision'
+    #  tags:
+    #    - satellite
+    #- role: 'satellite_vm_retire'
+    #  tags:
+    #    - satellite
+
+    #
+    # TOWER LIFECYCLE TEST
+    #
+    #- role: 'tower_vm_provision'
+    #  tags:
+    #    - tower
+    #- role: 'tower_vm_retire'
+    #  tags:
+    #    - tower
