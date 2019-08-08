@@ -1,0 +1,16 @@
+- name: 'initialize satellite template update'
+  uri:
+    url:              'https://{{ satellite_server }}/api/v2/templates/import'
+    user:             "{{ satellite_username }}"
+    password:         "{{ satellite_password }}"
+    method:           'POST'
+    force_basic_auth: true
+    status_code:      200,201
+    body_format:      'json'
+    validate_certs:   false
+  register: update_response
+
+- name: 'inspect update_response'
+  debug:
+    var: update_response
+  when: (debug | bool)

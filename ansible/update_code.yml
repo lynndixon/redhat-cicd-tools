@@ -1,0 +1,32 @@
+- hosts:        'localhost'
+  gather_facts: false
+  connection:   local
+
+  roles:
+    #
+    # pass in the appropriate tag:
+    #   - cloudforms: updates cloudforms automate domain from git
+    #   - satellite:  updates satellite templates from git
+    #   - tower:      updates tower project from git
+    #
+
+    #
+    # CLOUDFORMS CODE UPDATE
+    #
+    - role: 'miq_update_automate_domain'
+      tags:
+        - cloudforms
+
+    #
+    # SATELLITE CODE UPDATE
+    #
+    - role: 'satellite_update_templates'
+      tags:
+        - satellite
+
+    #
+    # TOWER CODE UPDATE
+    #
+    - role: 'tower_update_project'
+      tags:
+        - tower
