@@ -1,0 +1,104 @@
+pipeline {
+  agent any
+  options {
+    disableConcurrentBuilds()  // run one branch at a time
+  }
+
+  stages {
+    //
+    // LOG
+    //
+    stage('Log Environment') {
+      steps {
+        sh 'printenv'
+      }
+    }
+
+    //
+    // PREPARE
+    //
+    stage('Download CI/CD Tools') {
+      steps {
+        git 'https://github.com/lynndixon/redhat-cicd-tools'
+      }
+    }
+
+    //stage('Run Rubocop') {
+    //
+    //}
+
+    //
+    // BUILD
+    //
+    // TODO: dev tower project
+    // TODO: DRY for refreshing provisioning code
+    stage('Refresh Dev Provisioning Code') {
+      steps {
+        parallel (
+          "Refresh Dev CloudForms Code": {
+            withCredentials([usernamePassword(credentialsId: 'jenkins-service-account', passwordVariable: 'JENKINS_SVC_PASS', usernameVariable: 'JENKINS_SVC_USER')]) {
+              echo "Refreshing Dev CloudForms Automate Domain from: ${CLOUDFORMS_DEV}"
+              sh '''
+              ansible-playbook -vv -e "miq_username=${JENKINS_SVC_USER} miq_password=${JENKINS_SVC_PASS} miq_server=${CLOUDFORMS_DEV} miq_automate_domain=${CLOUDFORMS_DOMAIN} miq_refresh_type=branch miq_refresh_id=${GIT_BRANCH}" ./ansible/update_code.yml -t cloudforms
+              '''
+            }
+          },
+          "Refresh Dev Ansible Tower Code": {
+            withCredentials([usernamePassword(credentialsId: 'jenkins-service-account', passwordVariable: 'JENKINS_SVC_PASS', usernameVariable: 'JENKINS_SVC_USER')]) {
+              echo "Refreshing Dev Ansible Tower Code from: ${TOWER_DEV}"
+              sh '''
+              ansible-playbook -vv -e "tower_username=${JENKINS_SVC_USER} tower_password=${JENKINS_SVC_PASS} tower_server=${TOWER_DEV} tower_project_id=${TOWER_PROJECT_ID}" ./ansible/update_code.yml -t tower
+              '''
+            }
+          }
+        )
+      }
+    }
+
+    //
+    // TEST
+    //
+    stage('Test Provision and Retire') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'jenkins-service-account', passwordVariable: 'JENKINS_SVC_PASS', usernameVariable: 'JENKINS_SVC_USER')]) {
+          echo "Test CloudForms Provision and Retire at: ${CLOUDFORMS_DEV}"
+          sh '''
+          ansible-playbook -vv \
+          -e "miq_template_guid=${CLOUDFORMS_TEMPLATE_GUID} miq_username=${JENKINS_SVC_USER} miq_password=${JENKINS_SVC_PASS} miq_server=${CLOUDFORMS_DEV}" \
+          -e "@${PWD}@script/test_data/miq_tags.json" \
+          -e "@${PWD}@script/test_data/miq_options.json" \
+          ./ansible/test_vm_lifecycle.yml -t cloudforms
+          '''
+        }
+      }
+
+      post {
+        always {
+          withCredentials([usernamePassword(credentialsId: 'jenkins-service-account', passwordVariable: 'JENKINS_SVC_PASS', usernameVariable: 'JENKINS_SVC_USER')]) {
+            echo "Refreshing Dev CloudForms Automate Domain from: ${CLOUDFORMS_DEV}"
+            sh '''
+            ansible-playbook -vv -e "miq_username=${JENKINS_SVC_USER} miq_password=${JENKINS_SVC_PASS} miq_server=${CLOUDFORMS_DEV} miq_automate_domain=${CLOUDFORMS_DOMAIN} miq_refresh_type=branch miq_refresh_id=${DEFAULT_BRANCH}" ./ansible/update_code.yml -t cloudforms
+            '''
+          }
+        }
+      }
+    }
+
+    //
+    // DEPLOY
+    //
+    stage('Refresh Prod Ansible Tower Code') {
+      when { branch 'master' }
+      steps {
+        echo "Refreshing Production Ansible Tower Project for CloudForms"
+      }
+    }
+
+    stage('Refresh Prod CloudForms Code') {
+      when { branch 'master' }
+      steps {
+        echo "Refreshing Production CloudForms Automate Code"
+      }
+    }
+  }
+}
